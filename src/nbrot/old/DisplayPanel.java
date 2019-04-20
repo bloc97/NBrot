@@ -3,9 +3,8 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package nbrot;
+package nbrot.old;
 
-import nbrot.old.*;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics;
@@ -19,8 +18,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.stream.IntStream;
 import javax.swing.JPanel;
-import org.apfloat.Apcomplex;
-import org.apfloat.Apfloat;
 
 /**
  *
@@ -47,7 +44,7 @@ public class DisplayPanel extends JPanel {
     private boolean isMandel = true, useSmoothing = true;
     private volatile boolean isMoved = true;
     
-    private JuliaGrid grid = new JuliaGrid();
+    private JuliaImage jImage;
     
     public DisplayPanel() {
         
@@ -202,7 +199,6 @@ public class DisplayPanel extends JPanel {
     }
     
     
-    BufferedImage image = new BufferedImage(widthPixel, heightPixel, BufferedImage.TYPE_INT_ARGB);
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -217,7 +213,8 @@ public class DisplayPanel extends JPanel {
         boolean isMoved = this.isMoved;
         
         if (newWidthPixel != widthPixel || newHeightPixel != heightPixel) {
-            image = new BufferedImage(newWidthPixel, newHeightPixel, BufferedImage.TYPE_INT_ARGB);
+            jImage = new JuliaImageAparapi(newWidthPixel, newHeightPixel);
+            isMoved = true;
         }
         
         widthPixel = newWidthPixel;
@@ -228,32 +225,38 @@ public class DisplayPanel extends JPanel {
             isInit = true;
         }
         
+        if (jImage == null) {
+            jImage = new JuliaImageAparapi(widthPixel, heightPixel);
+        }
+        
         
         int size = widthPixel * heightPixel;
-        
         
         if (isMoved) {
             IntStream.range(0, size).forEach((n) -> {
                 int i = n % widthPixel;
                 int j = n / widthPixel;
-                Apcomplex position = new Apcomplex(new Apfloat(getXPos(i, mandelX, mandelScale)), new Apfloat(getYPos(j, mandelY, mandelScale)));
-                JuliaGrid grid = this.grid.getNode(position, new Apfloat(mandelScale));
-                
-                boolean b = false;
-                if (grid != null) {
-                    b = grid.sample(position) > 0;
+
+                if (isMandel) {
+                    jImage.set(n, 0, 0, getXPos(i, mandelX, mandelScale), getYPos(j, mandelY, mandelScale));
+                } else {
+                    jImage.set(n, getXPos(i, juliaX, juliaScale), getYPos(j, juliaY, juliaScale), juliaCX, juliaCY);
                 }
-                
-                image.setRGB(i, j, (b ? 0xFFFFFFFF : 0xFF000000));
-                
             });
             this.isMoved = false;
         }
         
+        if (isMoved) {
+            //jImage.iterations(16);
+        } else {
+            //jImage.iteration(maxIterations);
+        }
+        jImage.iterations(maxIterations);
+        
         
         //TODO: Draw directly with g2 without image, reducing overhead.
         //jImage.draw(g2);
-        g2.drawImage(image, 0, 0, this);
+        g2.drawImage(jImage.getImage(useSmoothing), 0, 0, this);
         
         g2.setFont(Font.getFont("Consolas"));
         
@@ -263,8 +266,6 @@ public class DisplayPanel extends JPanel {
         
         g2.drawString("Zoom: " + (1d/mandelScale), 10, 60);
         g2.drawString("Max Iterations: " + maxIterations, 10, 80);
-        
-        g2.drawString("Octree children: " + grid.countChildren(), 10, 100);
         
         repaint();
     }

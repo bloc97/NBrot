@@ -3,8 +3,10 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package nbrot;
+package nbrot.old;
 
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.stream.IntStream;
@@ -13,7 +15,7 @@ import java.util.stream.IntStream;
  *
  * @author bowen
  */
-public class JuliaImage {
+public class JuliaImageJava implements JuliaImage {
     
     private static final double LOG2 = Math.log(2d);
     
@@ -30,11 +32,11 @@ public class JuliaImage {
     
     private final BufferedImage image;
         
-    public JuliaImage(int width, int height) {
+    public JuliaImageJava(int width, int height) {
         this(width, height, 2d);
     }
     
-    public JuliaImage(int width, int height, double n) {
+    public JuliaImageJava(int width, int height, double n) {
         this.width = width;
         this.height = height;
         this.size = width * height;
@@ -50,6 +52,7 @@ public class JuliaImage {
         this.image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
     }
     
+    @Override
     public void set(int index, double zRe, double zIm, double cRe, double cIm) {
         this.zRe[index] = zRe;
         this.zIm[index] = zIm;
@@ -60,6 +63,7 @@ public class JuliaImage {
         this.currentMaxIteration = 0;
     }
     
+    @Override
     public void set(double[] zRe, double[] zIm, double[] cRe, double[] cIm) {
         System.arraycopy(zRe, 0, this.zRe, 0, width);
         System.arraycopy(zIm, 0, this.zIm, 0, width);
@@ -109,7 +113,11 @@ public class JuliaImage {
         this.useMultithreading = useMultithreading;
     }
     
+    @Override
     public void iteration(int maxIterations) {
+        if (currentMaxIteration >= maxIterations) {
+            return;
+        }
         if (useMultithreading) {
             currentMaxIteration = IntStream.range(0, size).parallel().map(i -> {
                 iteration(i, maxIterations);
@@ -118,7 +126,11 @@ public class JuliaImage {
         }
     }
     
+    @Override
     public void iterations(int maxIterations) {
+        if (currentMaxIteration >= maxIterations) {
+            return;
+        }
         if (useMultithreading) {
             currentMaxIteration = IntStream.range(0, size).parallel().map(i -> {
                 while(iteration(i, maxIterations)) {
@@ -127,10 +139,12 @@ public class JuliaImage {
             }).max().orElse(0);
         }
     }
+    @Override
     public BufferedImage getImage() {
         return getImage(true);
     }
     
+    @Override
     public BufferedImage getImage(boolean useSmoothing) {
         
         if (useMultithreading) {
@@ -176,6 +190,28 @@ public class JuliaImage {
         }*/
         
         return image;
+    }
+
+    @Override
+    public void draw(Graphics2D g2, boolean useSmoothing) {
+        for (int n=0; n<size; n++) {
+            int i = n % width;
+            int j = n / width;
+
+            double iteration = (double) iterations[n];
+
+            if (useSmoothing && iteration < currentMaxIteration) {
+                double log_zn = Math.log(zRe[n] * zRe[n] + zIm[n] * zIm[n]) / 2d;
+                double nu = Math.log(log_zn / LOG2) /LOG2;
+                iteration = iteration + 1d - nu;
+            }
+
+            final int ratio = (int)((iteration / currentMaxIteration) * 255d);
+            final int argb = 0xFF << 24 | ratio << 16 | ratio << 8 | ratio;
+            
+            g2.setColor(new Color(ratio, ratio, ratio));
+            g2.drawRect(i, j, 1, 1);
+        }
     }
     
 }

@@ -19,6 +19,10 @@ public class Main {
      * @param args the command line arguments
      */
     public static void main(String[] args) {
+        launch();
+    }
+    
+    private static void launch() {
         JFrame frame = new JFrame("NBrot");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         
@@ -32,7 +36,6 @@ public class Main {
         
         frame.requestFocusInWindow();
         panel.requestFocusInWindow();
-        
     }
     
 }
